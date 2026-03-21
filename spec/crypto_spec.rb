@@ -3,6 +3,7 @@
 require_relative '../credit_card'
 require_relative '../substitution_cipher'
 require_relative '../double_trans_cipher'
+require_relative '../sk_cipher'
 require 'minitest/autorun'
 require 'minitest/rg'
 
@@ -55,6 +56,42 @@ describe 'Test card info encryption' do
       enc = DoubleTranspositionCipher.encrypt(@cc, @key)
       dec = DoubleTranspositionCipher.decrypt(enc, @key)
       _(dec).must_equal @cc.to_s
+    end
+  end
+
+  describe 'Using Modern Symmetric Cipher' do
+    it 'should generate a Base64 key' do
+      key = ModernSymmetricCipher.generate_new_key
+
+      _(key).wont_be_nil
+      _(key).must_be_instance_of String
+      _(Base64.strict_decode64(key).bytesize).must_equal 32
+    end
+
+    {
+      'card information' => -> { @cc.to_s },
+      'plain text' => -> { 'encryption demo' }
+    }.each do |label, text_builder|
+      it "should encrypt and decrypt #{label}" do
+        key = ModernSymmetricCipher.generate_new_key
+        text = instance_exec(&text_builder)
+        enc = ModernSymmetricCipher.encrypt(text, key)
+        dec = ModernSymmetricCipher.decrypt(enc, key)
+
+        _(enc).wont_be_nil
+        _(enc).wont_equal text
+        _(dec).must_equal text
+      end
+    end
+
+    it 'should produce different ciphertext for repeated encryption' do
+      key = ModernSymmetricCipher.generate_new_key
+      text = @cc.to_s
+
+      enc_one = ModernSymmetricCipher.encrypt(text, key)
+      enc_two = ModernSymmetricCipher.encrypt(text, key)
+
+      _(enc_one).wont_equal enc_two
     end
   end
 end
